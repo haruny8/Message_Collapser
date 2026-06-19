@@ -1,0 +1,179 @@
+/* ═══════════════════════════════════════════════════════════════
+   Message Collapser — Floating Panel Styles
+   Matches Chen's soft purple / rose / dark-navy ST aesthetic
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Collapsed message text ── */
+.mes_text.mc-collapsed {
+    display: none !important;
+}
+
+/* ── Per-message chevron button ── */
+.mc-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 6px;
+    margin-top: 4px;
+    flex-shrink: 0;
+    cursor: pointer;
+    color: var(--SmartThemeQuoteColor, #b39ddb);
+    opacity: 0.55;
+    font-size: 0.75rem;
+    transition: opacity 0.15s, color 0.15s, transform 0.15s;
+    vertical-align: top;
+    float: left;
+}
+
+.mc-chevron:hover {
+    opacity: 1;
+    color: var(--SmartThemeBodyColor, #e0c8f0);
+}
+
+/* Give the mes_block room for the float */
+.mes_block {
+    overflow: visible;
+}
+
+/* ── Floating panel ── */
+#mc_floating_panel {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9999;
+    width: 240px;
+    background: var(--SmartThemeBlurTintColor,
+                    color-mix(in srgb, #1a1530 85%, #2d1f4a));
+    border: 1px solid var(--SmartThemeBorderColor,
+                           color-mix(in srgb, #9c6fce 35%, transparent));
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55),
+                0 0 0 1px rgba(155, 100, 210, 0.08);
+    backdrop-filter: blur(8px);
+    font-size: 0.875rem;
+    color: var(--SmartThemeBodyColor, #ddd0f5);
+    user-select: none;
+}
+
+/* Header / drag handle */
+.mc-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    cursor: grab;
+    background: color-mix(in srgb, #9c6fce 18%, transparent);
+    border-radius: 10px 10px 0 0;
+    border-bottom: 1px solid color-mix(in srgb, #9c6fce 25%, transparent);
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+}
+
+.mc-panel-header:active {
+    cursor: grabbing;
+}
+
+.mc-panel-header i {
+    margin-right: 6px;
+    color: var(--SmartThemeQuoteColor, #b39ddb);
+}
+
+.mc-close-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.5;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    font-size: 1rem;
+    transition: opacity 0.15s;
+    flex-shrink: 0;
+}
+
+.mc-close-btn:hover {
+    opacity: 1;
+}
+
+/* Body */
+.mc-panel-body {
+    padding: 10px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Enable toggle row */
+.mc-toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    opacity: 0.9;
+}
+
+.mc-toggle-row input[type="checkbox"] {
+    accent-color: var(--SmartThemeQuoteColor, #b39ddb);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* Separator */
+.mc-sep {
+    border: none;
+    border-top: 1px solid color-mix(in srgb, #9c6fce 20%, transparent);
+    margin: 2px 0;
+}
+
+/* 2×2 button grid */
+.mc-btn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+}
+
+.mc-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 6px 4px;
+    background: color-mix(in srgb, #9c6fce 15%, transparent);
+    border: 1px solid color-mix(in srgb, #9c6fce 30%, transparent);
+    border-radius: 6px;
+    color: var(--SmartThemeBodyColor, #ddd0f5);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.mc-action-btn:hover {
+    background: color-mix(in srgb, #9c6fce 30%, transparent);
+    border-color: color-mix(in srgb, #9c6fce 55%, transparent);
+}
+
+.mc-action-btn:active {
+    background: color-mix(in srgb, #9c6fce 40%, transparent);
+}
+
+.mc-action-btn i {
+    font-size: 0.7rem;
+    flex-shrink: 0;
+}
+
+/* Dimmer style for the hidden-specific buttons */
+.mc-btn-dim {
+    opacity: 0.8;
+}
+
+/* ── Wand menu item ── */
+#mc_wand_btn i.fa-compress-alt {
+    color: var(--SmartThemeQuoteColor, #b39ddb);
+}
