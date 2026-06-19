@@ -141,9 +141,9 @@
 .mc-action-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 5px;
-    padding: 6px 4px;
+    padding: 6px 6px 6px 8px;
     background: color-mix(in srgb, #9c6fce 15%, transparent);
     border: 1px solid color-mix(in srgb, #9c6fce 30%, transparent);
     border-radius: 6px;
@@ -152,6 +152,7 @@
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
     white-space: nowrap;
+    overflow: hidden;
 }
 
 .mc-action-btn:hover {
@@ -176,4 +177,53 @@
 /* ── Wand menu item ── */
 #mc_wand_btn i.fa-compress-alt {
     color: var(--SmartThemeQuoteColor, #b39ddb);
+}
+
+/* ── Mobile: compact panel for touch screens ── */
+@media (hover: none) and (pointer: coarse) {
+    #mc_floating_panel {
+        width: 188px;
+        font-size: 0.78rem;
+        /* Ensure it starts near corner, not centre-screen */
+        top: 60px;
+        right: 10px;
+    }
+
+    .mc-panel-header {
+        padding: 6px 9px;
+        font-size: 0.7rem;
+    }
+
+    .mc-panel-body {
+        padding: 7px 8px 9px;
+        gap: 6px;
+    }
+
+    .mc-toggle-row {
+        font-size: 0.72rem;
+        gap: 6px;
+    }
+
+    .mc-toggle-row input[type="checkbox"] {
+        width: 13px;
+        height: 13px;
+    }
+
+    .mc-btn-grid {
+        gap: 5px;
+    }
+
+    .mc-action-btn {
+        padding: 5px 4px 5px 6px;
+        font-size: 0.68rem;
+        gap: 4px;
+    }
+
+    .mc-action-btn i {
+        font-size: 0.62rem;
+    }
+
+    .mc-close-btn {
+        font-size: 0.85rem;
+    }
 }
