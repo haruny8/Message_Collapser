@@ -209,8 +209,11 @@ function makeDraggable(panel, handle) {
         if (!handle.hasPointerCapture(e.pointerId)) return;
         const dx = e.clientX - startX;
         const dy = e.clientY - startY;
-        panel.style.left = (origLeft + dx) + 'px';
-        panel.style.top  = (origTop  + dy) + 'px';
+        // Clamp so panel can never escape the viewport
+        const maxLeft = window.innerWidth  - panel.offsetWidth;
+        const maxTop  = window.innerHeight - panel.offsetHeight;
+        panel.style.left = Math.max(0, Math.min(origLeft + dx, maxLeft)) + 'px';
+        panel.style.top  = Math.max(0, Math.min(origTop  + dy, maxTop))  + 'px';
     });
 }
 
