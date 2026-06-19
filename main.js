@@ -1,9 +1,7 @@
 /
 * Message Collapser — Wand Panel Edition
-* Opens via the ✨ Extensions wand menu as a floating panel.
-* Does NOT appear in the Extensions settings drawer.
-*
-* v2 — Forces all messages into the DOM before collapsing,
+* Opens via the Extensions wand menu as a floating panel.
+* v2 - Forces all messages into the DOM before collapsing,
 * so the "Msg to Load" limit does not restrict collapsing.
 */
 
@@ -15,7 +13,7 @@ const PANEL_ID = 'mc_floating_panel';
 const WAND_BTN_ID = 'mc_wand_btn';
 const CHEVRON_CLASS = 'mc-chevron';
 
-// ─── Default settings ─────────────────────────────────────────────────────────
+// --- Default settings ---
 const DEFAULT_SETTINGS = { enabled: true };
 
 function getSettings() {
@@ -23,13 +21,12 @@ extension_settings[EXT_NAME]??= structuredClone(DEFAULT_SETTINGS);
 return extension_settings[EXT_NAME];
 }
 
-// ─── Helper: get full chat data ───────────────────────────────────────────────
-
+// --- Helper: get full chat data ---
 function getChat() {
 return getContext().chat || [];
 }
 
-// ─── Collapse / Expand core ───────────────────────────────────────────────────
+// --- Collapse / Expand core ---
 
 function collapseMessage($mes) {
 $mes.find('.mes_text').addClass('mc-collapsed');
@@ -51,92 +48,40 @@ collapseMessage($mes);
 }
 }
 
-// ─── Force-render ALL messages into the DOM ───────────────────────────────────
-// SillyTavern lazily renders messages based on "Msg to Load".
-// We temporarily set it high, re-render, then restore it.
-
-async function forceRenderAllMessages() {
-const chat = getChat();
-if (!chat.length) return;
-
-// Save current ST settings
-const stSettings = SillyTavern?.getConfig?.() || {};
-const origMaxMessages = stSettings.max_context?.max_messages?? stSettings.maxContextMessages?? null;
-
-// Try to force-render by bumping the load limit via the internal API.
-// SillyTavern stores this in the settings/config and re-renders on change.
-try {
-// Method 1: Use the internal SillyTavern function if available
-// SillyTavern v1.12+ exposes SillyTavern.getContext() which has
-// renderMessage or we can manipulate the settings and trigger a re-render.
-if (typeof SillyTavern!== 'undefined') {
-// Access the message rendering pipeline through the event system.
-// We'll temporarily set a very high limit, render, then restore.
-
-// First, check what setting key SillyTavern uses
-const settingKey = 'max_context'; // or 'maxContextMessages' depending on ST version
-
-// Get the current value from the config
-const config = SillyTavern.getConfig?.() || {};
-const currentLimit = config[settingKey]?.max_messages?? config[settingKey]?? null;
-
-// Override to show all messages
-if (currentLimit!== null) {
-// Set to total message count + buffer
-const totalMessages = chat.length;
-
-// Use SillyTavern's own method to update and re-render
-// SillyTavern v1.12+ has SillyTavern.setConfig or similar
-if (typeof SillyTavern.setConfig === 'function') {
-SillyTavern.setConfig(settingKey, { max_messages: totalMessages + 5 });
-}
-
-// Wait for re-render
-await new Promise(resolve => setTimeout(resolve, 300));
-}
-}
-} catch (e) {
-console.warn(`[${EXT_NAME}] Could not force full render via internal API:`, e);
-}
-
-// If the internal API didn't work, try the brute-force approach:
-// simulate scrolling to the top to trigger lazy loading of all messages.
-await forceRenderByScrolling();
-}
-
 /
-* Fallback: scroll to the top of the chat repeatedly to force
-* SillyTavern's lazy loader to bring all messages into the DOM.
+* Force-render ALL messages into the DOM by scrolling to the top.
+* SillyTavern lazily loads messages based on "Msg to Load".
+* Scrolling to the top triggers its sentinel-based lazy loader,
+* which progressively loads all messages into the DOM.
 */
-async function forceRenderByScrolling() {
+async function forceRenderAllMessages() {
 const chatContainer = document.getElementById('chat');
 if (!chatContainer) return;
 
 const chat = getChat();
 const totalMessages = chat.length;
+if (!totalMessages) return;
+
 const renderedCount = chatContainer.querySelectorAll('.mes').length;
+if (renderedCount >= totalMessages) return; // already all loaded
 
-// If already all rendered, nothing to do
-if (renderedCount >= totalMessages) return;
+// Remember where we were so we can scroll back
+const wasAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < 100;
 
-// Scroll to the top in increments to trigger lazy loading
-// Each scroll-up should cause SillyTavern to load more messages
-const scrollStep = 500;
 let lastRendered = renderedCount;
 let stableCount = 0;
 
-// Scroll to top first
+// Scroll to top to trigger lazy loading
 chatContainer.scrollTop = 0;
-await new Promise(resolve => setTimeout(resolve, 200));
+await new Promise(r => setTimeout(r, 250));
 
-// Check if SillyTavern has a loadMore or similar trigger
-// Some versions use a sentinel element at the top
-const sentinel = chatContainer.querySelector('.more_messages');
+// Look for the sentinel element SillyTavern uses to load more messages
+const sentinel = chatContainer.querySelector('.more_messages,.load-more-messages, #load-more-messages');
 if (sentinel) {
-// Scroll the sentinel into view repeatedly
-while (stableCount < 3) {
+// Repeatedly trigger the sentinel until all messages are loaded
+while (stableCount < 5) {
 sentinel.scrollIntoView();
-await new Promise(resolve => setTimeout(resolve, 150));
+await new Promise(r => setTimeout(r, 200));
 const now = chatContainer.querySelectorAll('.mes').length;
 if (now === lastRendered) {
 stableCount++;
@@ -144,36 +89,44 @@ stableCount++;
 stableCount = 0;
 lastRendered = now;
 }
-// Safety: don't loop forever
 if (now >= totalMessages) break;
 }
 } else {
-// No sentinel — just try scrolling to top and waiting
-// SillyTavern may use IntersectionObserver
-chatContainer.scrollTop = 0;
-await new Promise(resolve => setTimeout(resolve, 500));
+// No sentinel found - try brute force scroll up in increments
+const step = 300;
+while (stableCount < 5 && chatContainer.scrollTop > 0) {
+chatContainer.scrollTop = Math.max(0, chatContainer.scrollTop - step);
+await new Promise(r => setTimeout(r, 150));
+const now = chatContainer.querySelectorAll('.mes').length;
+if (now === lastRendered) {
+stableCount++;
+} else {
+stableCount = 0;
+lastRendered = now;
+}
+if (now >= totalMessages) break;
+}
 }
 
-// After forcing renders, scroll back to bottom
+// Scroll back to where the user was
+if (wasAtBottom) {
 chatContainer.scrollTop = chatContainer.scrollHeight;
-await new Promise(resolve => setTimeout(resolve, 200));
+}
+await new Promise(r => setTimeout(r, 200));
 }
 
-// Global actions
+// --- Global actions ---
+
 function collapseAll() {
-$('#chat.mes').each((_, el) => collapseMessage($(el)));
-const count = $('#chat.mes').length;
-if (count > 0) {
-toastr.success(`${count} message${count!== 1? 's': ''} collapsed.`);
-}
+let count = 0;
+$('#chat.mes').each((_, el) => { collapseMessage($(el)); count++; });
+if (count > 0) toastr.success(`${count} message${count!== 1? 's': ''} collapsed.`);
 }
 
 function expandAll() {
-$('#chat.mes').each((_, el) => expandMessage($(el)));
-const count = $('#chat.mes').length;
-if (count > 0) {
-toastr.success(`${count} message${count!== 1? 's': ''} expanded.`);
-}
+let count = 0;
+$('#chat.mes').each((_, el) => { expandMessage($(el)); count++; });
+if (count > 0) toastr.success(`${count} message${count!== 1? 's': ''} expanded.`);
 }
 
 function collapseHidden() {
@@ -182,10 +135,7 @@ const chat = getChat();
 for (let i = 0; i < chat.length; i++) {
 if (chat[i].is_system) {
 const $mes = $(`.mes[mesid="${i}"]`);
-if ($mes.length) {
-collapseMessage($mes);
-count++;
-}
+if ($mes.length) { collapseMessage($mes); count++; }
 }
 }
 if (count > 0) {
@@ -201,10 +151,7 @@ const chat = getChat();
 for (let i = 0; i < chat.length; i++) {
 if (chat[i].is_system) {
 const $mes = $(`.mes[mesid="${i}"]`);
-if ($mes.length) {
-expandMessage($mes);
-count++;
-}
+if ($mes.length) { expandMessage($mes); count++; }
 }
 }
 if (count > 0) {
@@ -214,7 +161,7 @@ toastr.info('No hidden messages found to expand.');
 }
 }
 
-// ─── Collapsed state persistence ──────────────────────────────────────────────
+// --- Collapsed state persistence ---
 
 const COLLAPSE_STORAGE_KEY = 'mc_collapsed_ids';
 
@@ -226,9 +173,7 @@ if ($el.attr('data-mc-collapsed') === 'true') {
 ids.push($el.attr('mesid'));
 }
 });
-try {
-localStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(ids));
-} catch (e) { /* ignore */ }
+try { localStorage.setItem(COLLAPSE_STORAGE_KEY, JSON.stringify(ids)); } catch (e) { /* ignore */ }
 }
 
 function restoreCollapsedState() {
@@ -239,14 +184,12 @@ const ids = JSON.parse(raw);
 if (!Array.isArray(ids)) return;
 for (const id of ids) {
 const $mes = $(`.mes[mesid="${id}"]`);
-if ($mes.length) {
-collapseMessage($mes);
-}
+if ($mes.length) collapseMessage($mes);
 }
 } catch (e) { /* ignore */ }
 }
 
-// ─── Per-message chevron button ───────────────────────────────────────────────
+// --- Per-message chevron button ---
 
 function addChevronToMessage($mes) {
 if ($mes.find(`.${CHEVRON_CLASS}`).length) return;
@@ -280,7 +223,7 @@ $('#chat.mes').each((_, el) => removeChevronFromMessage($(el)));
 localStorage.removeItem(COLLAPSE_STORAGE_KEY);
 }
 
-// ─── Observe new messages being added to the chat ────────────────────────────
+// --- Mutation observer for new messages ---
 
 let _observer = null;
 
@@ -288,7 +231,6 @@ function startObserver() {
 if (_observer) return;
 const chatEl = document.getElementById('chat');
 if (!chatEl) return;
-
 _observer = new MutationObserver((mutations) => {
 if (!getSettings().enabled) return;
 for (const m of mutations) {
@@ -307,7 +249,7 @@ _observer?.disconnect();
 _observer = null;
 }
 
-// ─── Floating panel ───────────────────────────────────────────────────────────
+// --- Floating panel ---
 
 function buildPanel() {
 if ($(`#${PANEL_ID}`).length) return;
@@ -336,8 +278,6 @@ const html = `
 $('body').append(html);
 
 const $panel = $(`#${PANEL_ID}`);
-
-// Sync toggle state
 $('#mc_enabled_toggle').prop('checked', getSettings().enabled);
 
 // Event wiring
@@ -358,19 +298,16 @@ if (!getSettings().enabled) return;
 await forceRenderAllMessages();
 collapseAll();
 });
-
 $('#mc_expand_all').on('click', async () => {
 if (!getSettings().enabled) return;
 await forceRenderAllMessages();
 expandAll();
 });
-
 $('#mc_collapse_hidden').on('click', async () => {
 if (!getSettings().enabled) return;
 await forceRenderAllMessages();
 collapseHidden();
 });
-
 $('#mc_expand_hidden').on('click', async () => {
 if (!getSettings().enabled) return;
 await forceRenderAllMessages();
@@ -378,8 +315,6 @@ expandHidden();
 });
 
 $panel.find('.mc-close-btn').on('click', hidePanel);
-
-// Drag support
 makeDraggable($panel[0], $panel.find('.mc-panel-header')[0]);
 }
 
@@ -393,18 +328,14 @@ $(`#${PANEL_ID}`).fadeOut(150);
 }
 
 function togglePanel() {
-if ($(`#${PANEL_ID}`).is(':visible')) {
-hidePanel();
-} else {
-showPanel();
-}
+if ($(`#${PANEL_ID}`).is(':visible')) hidePanel();
+else showPanel();
 }
 
-// ─── Draggable helper ─────────────────────────────────────────────────────────
+// --- Draggable helper ---
 
 function makeDraggable(panel, handle) {
 let startX, startY, origLeft, origTop;
-
 handle.addEventListener('pointerdown', (e) => {
 if (e.target.closest('button')) return;
 e.preventDefault();
@@ -413,15 +344,12 @@ startX = e.clientX;
 startY = e.clientY;
 origLeft = rect.left;
 origTop = rect.top;
-
 panel.style.left = origLeft + 'px';
 panel.style.top = origTop + 'px';
 panel.style.right = 'auto';
 panel.style.bottom = 'auto';
-
 handle.setPointerCapture(e.pointerId);
 });
-
 handle.addEventListener('pointermove', (e) => {
 if (!handle.hasPointerCapture(e.pointerId)) return;
 const dx = e.clientX - startX;
@@ -433,27 +361,24 @@ panel.style.top = Math.max(0, Math.min(origTop + dy, maxTop)) + 'px';
 });
 }
 
-// ─── Wand menu button ─────────────────────────────────────────────────────────
+// --- Wand menu button ---
 
 function addWandButton() {
 if ($(`#${WAND_BTN_ID}`).length) return;
-
 const $btn = $(`
 <div id="${WAND_BTN_ID}" class="list-group-item flex-container flexGap5 interactable" tabindex="0" title="Message Collapser">
 <i class="fa-solid fa-compress-alt fa-fw"></i>
 <span>Message Collapser</span>
 </div>
 `);
-
 $btn.on('click', () => {
 togglePanel();
 $('#extensionsMenuButton').trigger('click');
 });
-
 $('#extensionsMenu').append($btn);
 }
 
-// ─── Slash commands ───────────────────────────────────────────────────────────
+// --- Slash commands ---
 
 function registerSlashCommands() {
 import('../../../../slash-commands/SlashCommandParser.js').then(({ SlashCommandParser }) => {
@@ -478,10 +403,10 @@ return '';
 },
 }));
 });
-}).catch(() => { /* older ST — silently skip */ });
+}).catch(() => { /* older ST - silently skip */ });
 }
 
-// ─── Re-apply chevrons when chat changes ──────────────────────────────────────
+// --- Re-apply chevrons when chat changes ---
 
 function onChatChanged() {
 if (getSettings().enabled) {
@@ -492,7 +417,7 @@ restoreCollapsedState();
 }
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+// --- Init ---
 
 jQuery(async () => {
 getSettings();
@@ -509,5 +434,5 @@ $(document).on('characterSelected', onChatChanged);
 
 registerSlashCommands();
 
-console.log(`[${EXT_NAME}] Loaded — open via ✨ Extensions wand menu`);
+console.log(`[${EXT_NAME}] Loaded — open via Extensions wand menu`);
 });
