@@ -1,4 +1,4 @@
-/
+/**
 * Message Collapser — Wand Panel Edition
 * Opens via the Extensions wand menu as a floating panel.
 * v2 - Forces all messages into the DOM before collapsing,
