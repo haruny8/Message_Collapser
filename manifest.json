@@ -1,11 +1,9 @@
 {
-    "display_name": "Message_Collapser",
-    "loading_order": 9,
-    "requires": [],
-    "optional": [],
-    "js": "main.js",
-    "author": "nf286",
+    "display_name": "Message Collapser",
     "version": "1.1.0",
-    "homePage": "https://github.com/nfuller286/Message_Collapser",
-    "css": "style.css"
+    "js": "main.js",
+    "css": "style.css",
+    "author": "haruny8 / nfuller286",
+    "homePage": "https://github.com/haruny8/Message_Collapser",
+    "requires": []
 }
