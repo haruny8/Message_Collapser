@@ -20,6 +20,9 @@ function getSettings() {
     return extension_settings[EXT_NAME];
 }
 
+// ─── Track global collapse-all state ─────────────────────────────────────────
+let _collapseAllActive = false;
+
 // ─── Collapse / Expand core ───────────────────────────────────────────────────
 
 function collapseMessage($mes) {
@@ -42,9 +45,18 @@ function toggleMessage($mes) {
     }
 }
 
-// Global actions
-function collapseAll()    { $('#chat .mes').each((_, el) => collapseMessage($(el))); }
-function expandAll()      { $('#chat .mes').each((_, el) => expandMessage($(el))); }
+// Global actions — collapseAll/expandAll now track state so lazy-loaded
+// messages get the same treatment when they appear later.
+function collapseAll() {
+    _collapseAllActive = true;
+    $('#chat .mes').each((_, el) => collapseMessage($(el)));
+}
+
+function expandAll() {
+    _collapseAllActive = false;
+    $('#chat .mes').each((_, el) => expandMessage($(el)));
+}
+
 function collapseHidden() { $('#chat .mes[is_system="true"]').each((_, el) => collapseMessage($(el))); }
 function expandHidden()   { $('#chat .mes[is_system="true"]').each((_, el) => expandMessage($(el))); }
 
@@ -95,7 +107,11 @@ function startObserver() {
         for (const m of mutations) {
             for (const node of m.addedNodes) {
                 if (node.nodeType === 1 && node.classList.contains('mes')) {
-                    addChevronToMessage($(node));
+                    const $mes = $(node);
+                    addChevronToMessage($mes);
+                    // If "Collapse All" was previously clicked, also collapse
+                    // this newly loaded message so the state stays consistent.
+                    if (_collapseAllActive) collapseMessage($mes);
                 }
             }
         }
@@ -273,7 +289,11 @@ function registerSlashCommands() {
 function onChatChanged() {
     if (getSettings().enabled) {
         // Small delay to let ST finish rendering the new chat
-        setTimeout(addChevronToAll, 300);
+        setTimeout(() => {
+            addChevronToAll();
+            // Restore collapse-all state if it was active before the chat reload
+            if (_collapseAllActive) collapseAll();
+        }, 300);
     }
 }
 
