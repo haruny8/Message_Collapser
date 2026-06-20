@@ -1,5 +1,7 @@
 # Message Collapser Extension for SillyTavern
-It's my first extension I've successfully created. Hope it helps others. I created it for chats where I had disabled messages, that were cluttering things up. Below is the AI write up that tries to make it sound cooler than it is :-)
+But with Floating panel instead. 
+
+---
 
 This extension enhances your SillyTavern experience by allowing you to collapse and expand chat messages. It helps manage long conversations, declutter the interface, and focus on the most relevant parts of your chat history.
 
